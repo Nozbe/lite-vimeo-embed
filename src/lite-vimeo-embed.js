@@ -26,25 +26,40 @@ class LiteVimeo extends HTMLElement {
         // https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html#rule-2---attribute-escape-before-inserting-untrusted-data-into-html-common-attributes
         this.videoId = encodeURIComponent(this.getAttribute('videoid'));
 
+        let playBtnEl = this.querySelector('.ltv-playbtn');
+        // A label for the button takes priority over a [playlabel] attribute on the custom-element
+        this.playLabel = (playBtnEl && playBtnEl.textContent.trim()) || this.getAttribute('playlabel') || 'Play';
+
         /**
          * Lo, the vimeo placeholder image!  (aka the thumbnail, poster image, etc)
          * We have to use the Vimeo API.
          */
-        let { width, height } = getThumbnailDimensions(this.getBoundingClientRect());
-        const devicePixelRatio = window.devicePixelRatio || 1;
-        width *= devicePixelRatio;
-        height *= devicePixelRatio;
+        if (!this.style.backgroundImage) {
+            let { width, height } = getThumbnailDimensions(this.getBoundingClientRect());
+            const devicePixelRatio = window.devicePixelRatio || 1;
+            width *= devicePixelRatio;
+            height *= devicePixelRatio;
 
-        let thumbnailUrl = `https://lite-vimeo-embed.now.sh/thumb/${this.videoId}`;
-        thumbnailUrl += `.${canUseWebP() ? 'webp' : 'jpg'}`;
-        thumbnailUrl += `?mw=${width}&mh=${height}&q=${devicePixelRatio > 1 ? 70 : 85}`;
+            let thumbnailUrl = `https://lite-vimeo-embed.now.sh/thumb/${this.videoId}`;
+            thumbnailUrl += `.${canUseWebP() ? 'webp' : 'jpg'}`;
+            thumbnailUrl += `?mw=${width}&mh=${height}&q=${devicePixelRatio > 1 ? 70 : 85}`;
 
-        this.style.backgroundImage = `url("${thumbnailUrl}")`;
+            this.style.backgroundImage = `url("${thumbnailUrl}")`;
+        }
 
-        const playBtn = document.createElement('button');
-        playBtn.type = 'button';
-        playBtn.classList.add('ltv-playbtn');
-        this.appendChild(playBtn);
+        // Set up play button, and its visually hidden label
+        if (!playBtnEl) {
+            playBtnEl = document.createElement('button');
+            playBtnEl.type = 'button';
+            playBtnEl.classList.add('ltv-playbtn');
+            this.append(playBtnEl);
+        }
+        if (!playBtnEl.textContent) {
+            const playBtnLabelEl = document.createElement('span');
+            playBtnLabelEl.className = 'ltv-visually-hidden';
+            playBtnLabelEl.textContent = this.playLabel;
+            playBtnEl.append(playBtnLabelEl);
+        }
 
         // On hover (or tap), warm up the TCP connections we're (likely) about to use.
         this.addEventListener('pointerover', LiteVimeo._warmConnections, {
