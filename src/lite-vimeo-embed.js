@@ -1,4 +1,4 @@
-import { addPrefetch, getThumbnailDimensions, canUseWebP } from './utils.js';
+import { addPrefetch, getThumbnailDimensions, canUseWebP } from "./utils.js";
 
 /**
  * Ported from https://github.com/paulirish/lite-youtube-embed
@@ -23,52 +23,59 @@ class LiteVimeo extends HTMLElement {
     connectedCallback() {
         // Gotta encode the untrusted value
         // https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html#rule-2---attribute-escape-before-inserting-untrusted-data-into-html-common-attributes
-        this.videoId = encodeURIComponent(this.getAttribute('videoid'));
+        this.videoId = encodeURIComponent(this.getAttribute("videoid"));
 
-        let playBtnEl = this.querySelector('.ltv-playbtn');
+        let playBtnEl = this.querySelector(".ltv-playbtn");
         // A label for the button takes priority over a [playlabel] attribute on the custom-element
-        this.playLabel = (playBtnEl && playBtnEl.textContent.trim()) || this.getAttribute('playlabel') || 'Play';
+        this.playLabel =
+            (playBtnEl && playBtnEl.textContent.trim()) ||
+            this.getAttribute("playlabel") ||
+            "Play";
 
         /**
          * Lo, the vimeo placeholder image!  (aka the thumbnail, poster image, etc)
          * We have to use the Vimeo API.
          */
         if (!this.style.backgroundImage) {
-            let { width, height } = getThumbnailDimensions(this.getBoundingClientRect());
+            let { width, height } = getThumbnailDimensions(
+                this.getBoundingClientRect()
+            );
             const devicePixelRatio = window.devicePixelRatio || 1;
             width *= devicePixelRatio;
             height *= devicePixelRatio;
 
             let thumbnailUrl = `https://lite-vimeo-embed.now.sh/thumb/${this.videoId}`;
-            thumbnailUrl += `.${canUseWebP() ? 'webp' : 'jpg'}`;
-            thumbnailUrl += `?mw=${width}&mh=${height}&q=${devicePixelRatio > 1 ? 70 : 85}`;
+            thumbnailUrl += `.${canUseWebP() ? "webp" : "jpg"}`;
+            thumbnailUrl += `?mw=${width}&mh=${height}&q=${
+                devicePixelRatio > 1 ? 70 : 85
+            }`;
 
             this.style.backgroundImage = `url("${thumbnailUrl}")`;
         }
 
         // Set up play button, and its visually hidden label
         if (!playBtnEl) {
-            playBtnEl = document.createElement('button');
-            playBtnEl.type = 'button';
-            playBtnEl.classList.add('ltv-playbtn');
+            playBtnEl = document.createElement("button");
+            playBtnEl.type = "button";
+            playBtnEl.classList.add("ltv-playbtn");
             this.append(playBtnEl);
         }
         if (!playBtnEl.textContent) {
-            const playBtnLabelEl = document.createElement('span');
-            playBtnLabelEl.className = 'ltv-visually-hidden';
+            const playBtnLabelEl = document.createElement("span");
+            playBtnLabelEl.className = "ltv-visually-hidden";
             playBtnLabelEl.textContent = this.playLabel;
             playBtnEl.append(playBtnLabelEl);
         }
 
         // On hover (or tap), warm up the TCP connections we're (likely) about to use.
-        this.addEventListener('pointerover', LiteVimeo._warmConnections, {
-            once: true
+        this.addEventListener("pointerover", LiteVimeo._warmConnections, {
+            once: true,
         });
 
         // Once the user clicks, add the real iframe and drop our play button
         // TODO: In the future we could be like amp-youtube and silently swap in the iframe during idle time
         //   We'd want to only do this for in-viewport or near-viewport ones: https://github.com/ampproject/amphtml/pull/5003
-        this.addEventListener('click', () => this._addIframe());
+        this.addEventListener("click", () => this._addIframe());
     }
 
     // // TODO: Support the the user changing the [videoid] attribute
@@ -88,26 +95,32 @@ class LiteVimeo extends HTMLElement {
         if (LiteVimeo.preconnected) return;
 
         // The iframe document and most of its subresources come right off player.vimeo.com
-        addPrefetch('preconnect', 'https://player.vimeo.com');
+        addPrefetch("preconnect", "https://player.vimeo.com");
         // Images
-        addPrefetch('preconnect', 'https://i.vimeocdn.com');
+        addPrefetch("preconnect", "https://i.vimeocdn.com");
         // Files .js, .css
-        addPrefetch('preconnect', 'https://f.vimeocdn.com');
+        addPrefetch("preconnect", "https://f.vimeocdn.com");
         // Metrics
-        addPrefetch('preconnect', 'https://fresnel.vimeocdn.com');
+        addPrefetch("preconnect", "https://fresnel.vimeocdn.com");
 
         LiteVimeo.preconnected = true;
     }
 
     _addIframe() {
+        if (this.classList.contains("ltv-activated")) return;
+        this.classList.add("ltv-activated");
+
+        const params = new URLSearchParams(this.getAttribute("params") || []);
+        params.append("autoplay", "1");
+
         const iframeHTML = `
 <iframe width="640" height="360" frameborder="0"
   allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen
-  src="https://player.vimeo.com/video/${this.videoId}?autoplay=1"
+  src="https://player.vimeo.com/video/${this.videoId}?${params.toString()}"
 ></iframe>`;
-        this.insertAdjacentHTML('beforeend', iframeHTML);
-        this.classList.add('ltv-activated');
+
+        this.insertAdjacentHTML("beforeend", iframeHTML);
     }
 }
 // Register custome element
-customElements.define('lite-vimeo', LiteVimeo);
+customElements.define("lite-vimeo", LiteVimeo);
