@@ -111,7 +111,7 @@ class LiteVimeo extends HTMLElement {
         this.classList.add("ltv-activated");
 
         const params = new URLSearchParams(
-            this.getAttribute("params") || ["autoplay=1"]
+            this.getAttribute("params") || "autoplay=1"
         );
 
         const iframeHTML = `
